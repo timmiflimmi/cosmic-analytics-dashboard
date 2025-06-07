@@ -5,493 +5,520 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import time
 import random
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Page Config
 st.set_page_config(
     page_title="🔴 Mars Exploration Hub",
     page_icon="🔴",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# Custom CSS
+# Custom CSS für Mars Theme
 st.markdown("""
 <style>
-    .mars-header {
-        font-size: 3rem;
-        background: linear-gradient(90deg, #e74c3c 0%, #c0392b 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        text-align: center;
-        font-weight: bold;
-        margin-bottom: 1rem;
-    }
-    .page-intro {
-        font-size: 1.2rem;
-        text-align: center;
-        color: #2c3e50;
-        margin-bottom: 2rem;
-        padding: 1.5rem;
-        background: linear-gradient(135deg, #ffe8e8 0%, #ffcccb 100%);
+    .main-header {
+        background: linear-gradient(135deg, #8b0000 0%, #dc143c 50%, #ff6347 100%);
+        padding: 2rem;
         border-radius: 15px;
-        border-left: 5px solid #e74c3c;
+        margin-bottom: 2rem;
+        text-align: center;
+        color: white;
+        box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
     }
     .rover-card {
-        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
         padding: 1.5rem;
         border-radius: 15px;
-        color: white;
         margin: 1rem 0;
-        box-shadow: 0 8px 32px rgba(231, 76, 60, 0.2);
-    }
-    .mars-stat {
-        background: linear-gradient(135deg, #d35400 0%, #e67e22 100%);
-        padding: 1rem;
-        border-radius: 10px;
         color: white;
-        text-align: center;
-        margin: 0.5rem 0;
+        box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
     }
     .weather-card {
-        background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+        background: linear-gradient(135deg, #fa7268 0%, #f093fb 100%);
         padding: 1.5rem;
         border-radius: 15px;
-        color: white;
         margin: 1rem 0;
-    }
-    .photo-container {
-        background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);
-        padding: 1rem;
-        border-radius: 12px;
         color: white;
-        margin: 0.5rem 0;
+        box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+    }
+    .metric-card {
+        background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+        padding: 1rem;
+        border-radius: 10px;
         text-align: center;
+        color: #8b0000;
+        margin: 0.5rem;
+        font-weight: bold;
     }
-    .mission-timeline {
-        background: linear-gradient(135deg, #16a085 0%, #1abc9c 100%);
-        padding: 1rem;
-        border-radius: 10px;
+    .mission-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1.5rem;
+        border-radius: 15px;
+        margin: 1rem 0;
         color: white;
-        margin: 0.5rem 0;
     }
-    .mars-fact {
-        background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
-        padding: 1rem;
+    .photo-placeholder {
+        background: linear-gradient(135deg, #8B4513 0%, #D2691E 100%);
+        padding: 2rem;
         border-radius: 10px;
+        text-align: center;
         color: white;
-        margin: 0.8rem 0;
-        font-style: italic;
+        margin: 0.5rem;
     }
 </style>
 """, unsafe_allow_html=True)
 
-class MarsExplorer:
+class MarsExplorationAPI:
     def __init__(self):
-        self.nasa_mars_url = "https://api.nasa.gov/mars-photos/api/v1/rovers/perseverance/latest_photos?api_key=DEMO_KEY"
-        self.curiosity_url = "https://api.nasa.gov/mars-photos/api/v1/rovers/curiosity/latest_photos?api_key=DEMO_KEY"
-        self.nasa_insight_url = "https://api.nasa.gov/insight_weather/?api_key=DEMO_KEY&feedtype=json&ver=1.0"
+        # NASA API Key aus Environment Variable laden
+        self.nasa_api_key = os.getenv("NASA_API_KEY", "DEMO_KEY")
         
-    def get_perseverance_photos(self, limit=6):
-        """Holt neueste Perseverance Rover Fotos"""
+        # Mars Rover APIs
+        self.nasa_mars_url = f"https://api.nasa.gov/mars-photos/api/v1/rovers/perseverance/photos?api_key={self.nasa_api_key}"
+        self.curiosity_url = f"https://api.nasa.gov/mars-photos/api/v1/rovers/curiosity/photos?api_key={self.nasa_api_key}"
+        
+        # Mars Weather (falls verfügbar)
+        self.mars_weather_url = f"https://api.nasa.gov/insight_weather/?api_key={self.nasa_api_key}"
+    
+    def get_mars_photos(self):
+        """Holt Mars Rover Fotos mit Debug und funktionierenden Fallbacks"""
         try:
-            response = requests.get(self.nasa_mars_url, timeout=15)
-            response.raise_for_status()
+            print(f"🔍 NASA API Key: {self.nasa_api_key[:10]}...")
             
-            data = response.json()
-            photos = data.get('latest_photos', [])
+            # Versuche verschiedene Sols für echte NASA Fotos
+            sol_attempts = [3000, 2500, 2000, 1500, 1000]
             
-            # Filtere und limitiere Fotos
-            valid_photos = []
-            for photo in photos:
-                if photo.get('img_src') and len(valid_photos) < limit:
-                    valid_photos.append(photo)
+            for sol in sol_attempts:
+                try:
+                    # Perseverance NavCam Photos
+                    url = f"{self.nasa_mars_url}&sol={sol}&camera=navcam"
+                    print(f"🚀 Trying Perseverance API: sol={sol}")
+                    
+                    response = requests.get(url, timeout=10)
+                    print(f"📡 Perseverance Response: {response.status_code}")
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        if data.get('photos') and len(data['photos']) > 0:
+                            print(f"✅ Found {len(data['photos'])} Perseverance photos for sol {sol}")
+                            return data['photos'][:6]
+                    
+                    # Fallback zu Curiosity für diesen Sol
+                    curiosity_url = f"https://api.nasa.gov/mars-photos/api/v1/rovers/curiosity/photos?api_key={self.nasa_api_key}&sol={sol}&camera=navcam"
+                    print(f"🤖 Trying Curiosity API: sol={sol}")
+                    
+                    response = requests.get(curiosity_url, timeout=10)
+                    print(f"📡 Curiosity Response: {response.status_code}")
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        if data.get('photos') and len(data['photos']) > 0:
+                            print(f"✅ Found {len(data['photos'])} Curiosity photos for sol {sol}")
+                            return data['photos'][:6]
+                            
+                except Exception as e:
+                    print(f"❌ Error for sol {sol}: {e}")
+                    continue
             
-            return valid_photos
+            print("🔄 All sols failed, using placeholder images")
+            return self._get_mars_placeholders()
             
         except Exception as e:
-            st.warning("⚠️ Mars Rover photos temporarily unavailable")
-            return self._get_simulated_photos()
+            print(f"🔥 Mars API Error: {e}")
+            return self._get_mars_placeholders()
     
-    def get_curiosity_photos(self, limit=3):
-        """Holt Curiosity Rover Fotos"""
-        try:
-            response = requests.get(self.curiosity_url, timeout=15)
-            response.raise_for_status()
-            
-            data = response.json()
-            return data.get('latest_photos', [])[:limit]
-            
-        except Exception as e:
-            return []
-    
-    def get_mars_weather(self):
-        """Simuliert Mars Wetter (InSight ist nicht mehr aktiv)"""
-        # Simuliere realistische Mars-Wetter
-        sol = 1000 + random.randint(1, 500)  # Mars Sol (Tag)
+    def _get_mars_placeholders(self):
+        """Mars-themed funktionsfähige Placeholder Bilder"""
+        base_sol = 1000 + (datetime.now().day % 100)
         
-        # Mars Temperaturen schwanken stark
-        temp_high = random.randint(-20, 5)  # Celsius
-        temp_low = random.randint(-80, -40)
+        # Verwende Mars-farbige Placeholders die garantiert funktionieren
+        placeholder_data = [
+            {'color': '8B4513', 'title': '🔴+Mars+Surface+Panorama'},
+            {'color': 'A0522D', 'title': '🤖+Rover+Navigation+View'},
+            {'color': 'CD853F', 'title': '🌄+Martian+Horizon'},
+            {'color': 'D2691E', 'title': '🔬+Sample+Collection'},
+            {'color': 'DEB887', 'title': '🏔️+Rock+Formation'},
+            {'color': 'F4A460', 'title': '🌅+Mars+Landscape'}
+        ]
         
-        # Mars Atmosphärendruck
-        pressure = random.randint(600, 900)  # Pascal
+        mars_photos = []
+        for i, placeholder in enumerate(placeholder_data):
+            mars_photos.append({
+                'id': f'mars_placeholder_{i}',
+                'sol': base_sol + i,
+                'img_src': f"https://via.placeholder.com/400x300/{placeholder['color']}/FFFFFF?text={placeholder['title']}",
+                'camera': {
+                    'full_name': ['Navigation Camera - Left', 'Navigation Camera - Right', 'Front Hazard Camera', 'Rear Hazard Camera', 'Chemistry Camera', 'Panoramic Camera'][i]
+                },
+                'rover': {'name': 'Perseverance' if i % 2 == 0 else 'Curiosity'}
+            })
         
-        # Wind auf Mars
-        wind_speed = random.randint(5, 25)  # m/s
-        wind_direction = random.choice(['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'])
-        
-        return {
-            'sol': sol,
-            'temperature_high': temp_high,
-            'temperature_low': temp_low,
-            'pressure': pressure,
-            'wind_speed': wind_speed,
-            'wind_direction': wind_direction,
-            'season': self._get_mars_season(),
-            'weather_condition': random.choice(['Clear', 'Dusty', 'Dust Storm', 'Partly Cloudy'])
-        }
+        return mars_photos
     
     def get_rover_status(self):
-        """Rover Status Information"""
-        perseverance_sols = 1513 + random.randint(0, 10)  # Ungefähr aktueller Sol
-        curiosity_sols = 4000 + random.randint(0, 20)
-        
+        """Simulierte Rover Status Daten"""
         return {
             'perseverance': {
-                'sol': perseverance_sols,
                 'status': 'Active',
-                'location': 'Jezero Crater',
-                'distance_km': 28.5 + random.random() * 2,
-                'samples_collected': 24 + random.randint(0, 5),
-                'power_level': random.randint(85, 98)
+                'sol': 1000 + (datetime.now().day % 100),
+                'total_photos': 275000 + (datetime.now().day * 50),
+                'distance_driven': f"{28.5 + (datetime.now().day * 0.1):.1f}",
+                'samples_collected': 24 + (datetime.now().day % 5),
+                'power_level': 85 + (datetime.now().day % 15)
             },
             'curiosity': {
-                'sol': curiosity_sols,
-                'status': 'Active',
-                'location': 'Gale Crater',
-                'distance_km': 29.8 + random.random() * 2,
-                'samples_analyzed': 45 + random.randint(0, 3),
-                'power_level': random.randint(80, 95)
+                'status': 'Active', 
+                'sol': 4000 + (datetime.now().day % 50),
+                'total_photos': 850000 + (datetime.now().day * 100),
+                'distance_driven': f"{29.9 + (datetime.now().day * 0.05):.1f}",
+                'samples_collected': 39 + (datetime.now().day % 3),
+                'power_level': 78 + (datetime.now().day % 12)
             }
         }
     
-    def get_mars_facts(self):
-        """Interessante Mars-Fakten"""
-        facts = [
-            "🔴 Mars ist als 'Roter Planet' bekannt wegen Eisenoxid (Rost) auf der Oberfläche",
-            "🌡️ Mars-Temperaturen schwanken zwischen -143°C und 35°C",
-            "📅 Ein Mars-Tag (Sol) dauert 24 Stunden und 37 Minuten",
-            "🌍 Mars ist etwa halb so groß wie die Erde",
-            "⛰️ Der Olympus Mons ist der größte Vulkan im Sonnensystem (21 km hoch)",
-            "💨 Mars-Atmosphäre besteht zu 95% aus Kohlendioxid",
-            "🌊 Polare Eiskappen enthalten gefrorenes Wasser und Trockeneis",
-            "🛰️ Mars hat zwei kleine Monde: Phobos und Deimos",
-            "🚀 Eine Reise zum Mars dauert etwa 7-9 Monate",
-            "🏜️ Staubstürme können den ganzen Planeten bedecken"
-        ]
-        return random.sample(facts, 3)
+    def get_mars_weather(self):
+        """Simulierte Mars Wetter Daten"""
+        # Basierend auf echten Mars-Wetterdaten
+        base_temp = -70 + (datetime.now().day % 40) - 20
+        return {
+            'sol': 1000 + (datetime.now().day % 100),
+            'temperature': {
+                'high': base_temp + 15,
+                'low': base_temp - 25
+            },
+            'pressure': 750 + (datetime.now().day % 100),
+            'wind_speed': 5 + (datetime.now().day % 15),
+            'wind_direction': ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][datetime.now().day % 8],
+            'season': 'Northern Winter' if datetime.now().month in [12, 1, 2, 3, 4] else 'Northern Summer',
+            'weather_conditions': ['Clear', 'Dusty', 'Partly Cloudy'][datetime.now().day % 3]
+        }
     
-    def _get_mars_season(self):
-        """Bestimmt Mars-Jahreszeit basierend auf Datum"""
-        month = datetime.now().month
-        if month in [12, 1, 2]:
-            return "Northern Winter"
-        elif month in [3, 4, 5]:
-            return "Northern Spring"
-        elif month in [6, 7, 8]:
-            return "Northern Summer"
-        else:
-            return "Northern Autumn"
-    
-    def _get_simulated_photos(self):
-        """Fallback für simulierte Mars-Fotos"""
+    def get_mars_timeline(self):
+        """Mars Mission Timeline"""
         return [
-            {
-                'id': f'sim_{i}',
-                'sol': 1513 + i,
-                'camera': {'full_name': f'Navigation Camera - {"Left" if i % 2 == 0 else "Right"}'},
-                'img_src': f'https://via.placeholder.com/400x300/8B4513/FFFFFF?text=Mars+Sol+{1513+i}',
-                'earth_date': (datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d')
-            }
-            for i in range(6)
+            {'year': 1976, 'mission': 'Viking 1 & 2', 'type': 'Lander', 'status': 'Completed'},
+            {'year': 1997, 'mission': 'Mars Pathfinder', 'type': 'Rover (Sojourner)', 'status': 'Completed'},
+            {'year': 2004, 'mission': 'Spirit & Opportunity', 'type': 'Rovers', 'status': 'Completed'},
+            {'year': 2012, 'mission': 'Curiosity', 'type': 'Rover', 'status': 'Active'},
+            {'year': 2021, 'mission': 'Perseverance', 'type': 'Rover', 'status': 'Active'},
+            {'year': 2021, 'mission': 'Ingenuity', 'type': 'Helicopter', 'status': 'Active'},
+            {'year': 2028, 'mission': 'Mars Sample Return', 'type': 'Sample Return', 'status': 'Planned'},
+            {'year': 2030, 'mission': 'Human Mission', 'type': 'Crewed', 'status': 'Planned'}
         ]
 
 def create_temperature_chart(weather_data):
     """Erstellt Mars Temperatur Chart"""
-    # Simuliere 7 Tage Mars-Wetter
-    days = []
-    highs = []
-    lows = []
-    
-    base_sol = weather_data['sol']
-    base_high = weather_data['temperature_high']
-    base_low = weather_data['temperature_low']
-    
-    for i in range(7):
-        days.append(f"Sol {base_sol - 6 + i}")
-        # Variiere Temperaturen leicht
-        high_var = random.randint(-5, 5)
-        low_var = random.randint(-10, 10)
-        highs.append(base_high + high_var)
-        lows.append(base_low + low_var)
+    # 7-Sol Temperatur Simulation
+    sols = list(range(weather_data['sol'] - 6, weather_data['sol'] + 1))
+    highs = [weather_data['temperature']['high'] + random.randint(-10, 10) for _ in sols]
+    lows = [weather_data['temperature']['low'] + random.randint(-5, 5) for _ in sols]
     
     fig = go.Figure()
     
-    # Hohe Temperaturen
     fig.add_trace(go.Scatter(
-        x=days,
-        y=highs,
+        x=sols, y=highs,
         mode='lines+markers',
-        name='Tageshöchstwert',
-        line=dict(color='#e74c3c', width=3),
+        name='Tagesmaximum',
+        line=dict(color='#ff6b6b'),
         marker=dict(size=8)
     ))
     
-    # Niedrige Temperaturen
     fig.add_trace(go.Scatter(
-        x=days,
-        y=lows,
+        x=sols, y=lows,
         mode='lines+markers',
-        name='Tagestiefstenwert',
-        line=dict(color='#3498db', width=3),
-        marker=dict(size=8),
-        fill='tonexty',
-        fillcolor='rgba(231, 76, 60, 0.2)'
+        name='Tagesminimum', 
+        line=dict(color='#4dabf7'),
+        marker=dict(size=8)
     ))
     
     fig.update_layout(
-        title='🌡️ Mars Temperatur-Verlauf (7 Sols)',
-        xaxis_title='Mars Sol (Tag)',
+        title='🌡️ Mars Temperatur - 7 Sol Verlauf',
+        xaxis_title='Sol (Mars Tag)',
         yaxis_title='Temperatur (°C)',
-        template='plotly_white',
-        height=400
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font_color='white',
+        showlegend=True
     )
     
     return fig
 
-def create_mission_timeline():
-    """Erstellt Mars Mission Timeline"""
-    missions = [
-        {'Mission': 'Viking 1', 'Year': 1976, 'Type': 'Orbiter/Lander', 'Status': 'Completed'},
-        {'Mission': 'Mars Pathfinder', 'Year': 1997, 'Type': 'Lander/Rover', 'Status': 'Completed'},
-        {'Mission': 'Spirit & Opportunity', 'Year': 2004, 'Type': 'Rovers', 'Status': 'Completed'},
-        {'Mission': 'Phoenix', 'Year': 2008, 'Type': 'Lander', 'Status': 'Completed'},
-        {'Mission': 'Curiosity', 'Year': 2012, 'Type': 'Rover', 'Status': 'Active'},
-        {'Mission': 'InSight', 'Year': 2018, 'Type': 'Lander', 'Status': 'Completed'},
-        {'Mission': 'Perseverance', 'Year': 2021, 'Type': 'Rover', 'Status': 'Active'},
-        {'Mission': 'Ingenuity', 'Year': 2021, 'Type': 'Helicopter', 'Status': 'Active'}
-    ]
+def create_mission_timeline_chart(timeline_data):
+    """Erstellt Mission Timeline Chart"""
+    df_timeline = []
+    for mission in timeline_data:
+        df_timeline.append({
+            'Mission': mission['mission'],
+            'Jahr': mission['year'],
+            'Typ': mission['type'],
+            'Status': mission['status']
+        })
+    
+    colors = {'Active': '#2ed573', 'Completed': '#3742fa', 'Planned': '#ffa726'}
     
     fig = px.scatter(
-        missions,
-        x='Year',
+        df_timeline,
+        x='Jahr',
         y='Mission',
         color='Status',
-        size_max=15,
-        title='🚀 Mars Exploration Timeline',
-        color_discrete_map={
-            'Active': '#27ae60',
-            'Completed': '#3498db'
-        }
+        color_discrete_map=colors,
+        title='🚀 Mars Missions Timeline',
+        hover_data=['Typ']
     )
     
     fig.update_layout(
-        height=400,
-        template='plotly_white',
-        xaxis_title='Launch Year',
-        yaxis_title='Mission'
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font_color='white'
     )
     
     return fig
 
 def main():
     # Header
-    st.markdown('<h1 class="mars-header">🔴 MARS EXPLORATION HUB</h1>', unsafe_allow_html=True)
-    
     st.markdown("""
-    <div class="page-intro">
-        <strong>🚀 Latest Discoveries from the Red Planet</strong><br><br>
-        Explore Mars through the eyes of NASA's rovers Perseverance and Curiosity. 
-        From stunning landscape photos to weather data, discover what life might be like 
-        on humanity's next home. Mars awaits! 🌌
+    <div class="main-header">
+        <h1>🔴 MARS EXPLORATION HUB</h1>
+        <p>Red Planet Discovery Center</p>
+        <p>🤖 Perseverance • 🔬 Curiosity • 🚁 Ingenuity • 🌡️ Weather Station</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Initialize Mars Explorer
-    mars_explorer = MarsExplorer()
+    # Initialize API
+    mars_api = MarsExplorationAPI()
     
-    # Sidebar Controls
-    st.sidebar.markdown("## 🎛️ Mars Mission Control")
+    # Get Mars data
+    rover_status = mars_api.get_rover_status()
+    mars_weather = mars_api.get_mars_weather()
+    mars_photos = mars_api.get_mars_photos()
+    timeline_data = mars_api.get_mars_timeline()
     
-    auto_refresh = st.sidebar.checkbox("🔄 Auto-Refresh (2 min)", value=False)
-    if auto_refresh:
-        time.sleep(120)
-        st.rerun()
+    # Active Rover Status
+    col1, col2, col3, col4 = st.columns(4)
     
-    if st.sidebar.button("🔴 Update Mars Data", type="primary"):
-        st.rerun()
+    with col1:
+        st.markdown(f"""
+        <div class="metric-card">
+            <h3>🤖 Perseverance</h3>
+            <h2>Sol {rover_status['perseverance']['sol']}</h2>
+            <p>{rover_status['perseverance']['status']}</p>
+        </div>
+        """, unsafe_allow_html=True)
     
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### 🔴 Mars Quick Facts")
-    st.sidebar.markdown("""
-    - **Distance from Earth:** 54.6M - 401M km
-    - **Day Length:** 24h 37m (1 Sol)
-    - **Year Length:** 687 Earth days
-    - **Gravity:** 38% of Earth's gravity
-    - **Atmosphere:** 95% CO₂, 1% oxygen
-    - **Temperature:** -143°C to +35°C
-    - **Largest Volcano:** Olympus Mons (21km)
-    - **Moons:** Phobos & Deimos
-    """)
+    with col2:
+        st.markdown(f"""
+        <div class="metric-card">
+            <h3>🔬 Samples</h3>
+            <h2>{rover_status['perseverance']['samples_collected']}</h2>
+            <p>Collected</p>
+        </div>
+        """, unsafe_allow_html=True)
     
-    # Get Mars Data
-    with st.spinner("🛰️ Contacting Mars rovers..."):
-        rover_status = mars_explorer.get_rover_status()
-        weather_data = mars_explorer.get_mars_weather()
-        perseverance_photos = mars_explorer.get_perseverance_photos(6)
-        mars_facts = mars_explorer.get_mars_facts()
-        
-        # Rover Status Cards
-        st.markdown("### 🤖 Active Mars Rovers")
-        
-        col_pers, col_cur = st.columns(2)
-        
-        with col_pers:
-            pers_data = rover_status['perseverance']
-            st.markdown(f"""
-            <div class="rover-card">
-                <h3>🔴 Perseverance Rover</h3>
-                <p><strong>📅 Sol:</strong> {pers_data['sol']} (Mars Day)</p>
-                <p><strong>📍 Location:</strong> {pers_data['location']}</p>
-                <p><strong>🚗 Distance:</strong> {pers_data['distance_km']:.1f} km traveled</p>
-                <p><strong>🧪 Samples:</strong> {pers_data['samples_collected']} collected</p>
-                <p><strong>🔋 Power:</strong> {pers_data['power_level']}%</p>
-                <p><strong>🎯 Status:</strong> {pers_data['status']}</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col_cur:
-            cur_data = rover_status['curiosity']
-            st.markdown(f"""
-            <div class="rover-card">
-                <h3>🔴 Curiosity Rover</h3>
-                <p><strong>📅 Sol:</strong> {cur_data['sol']} (Mars Day)</p>
-                <p><strong>📍 Location:</strong> {cur_data['location']}</p>
-                <p><strong>🚗 Distance:</strong> {cur_data['distance_km']:.1f} km traveled</p>
-                <p><strong>🔬 Samples:</strong> {cur_data['samples_analyzed']} analyzed</p>
-                <p><strong>🔋 Power:</strong> {cur_data['power_level']}%</p>
-                <p><strong>🎯 Status:</strong> {cur_data['status']}</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # Mars Weather Station
-        st.markdown("---")
-        st.markdown("### 🌡️ Mars Weather Station")
-        
-        col_weather, col_chart = st.columns([1, 2])
-        
-        with col_weather:
-            st.markdown(f"""
-            <div class="weather-card">
-                <h3>☀️ Current Conditions</h3>
-                <p><strong>📅 Sol:</strong> {weather_data['sol']}</p>
-                <p><strong>🌡️ High:</strong> {weather_data['temperature_high']}°C</p>
-                <p><strong>🌡️ Low:</strong> {weather_data['temperature_low']}°C</p>
-                <p><strong>💨 Wind:</strong> {weather_data['wind_speed']} m/s {weather_data['wind_direction']}</p>
-                <p><strong>📊 Pressure:</strong> {weather_data['pressure']} Pa</p>
-                <p><strong>🌤️ Condition:</strong> {weather_data['weather_condition']}</p>
-                <p><strong>🍂 Season:</strong> {weather_data['season']}</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col_chart:
-            temp_chart = create_temperature_chart(weather_data)
-            st.plotly_chart(temp_chart, use_container_width=True)
-        
-        # Mars Photos Gallery
-        st.markdown("---")
-        st.markdown("### 📷 Latest from Mars - Perseverance Rover")
-        
-        if perseverance_photos:
-            photo_cols = st.columns(3)
-            
-            for i, photo in enumerate(perseverance_photos[:6]):
-                col = photo_cols[i % 3]
-                
-                camera_name = photo.get('camera', {}).get('full_name', 'Mars Camera')
-                sol = photo.get('sol', 'Unknown')
-                earth_date = photo.get('earth_date', 'Unknown')
-                
-                with col:
-                    st.markdown(f"""
-                    <div class="photo-container">
-                        <h4>📸 Sol {sol}</h4>
-                        <p>{camera_name}</p>
-                        <p>📅 {earth_date}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Versuche Foto zu laden
-                    try:
-                        if photo.get('img_src'):
-                            st.image(photo['img_src'], use_container_width=True)
-                        else:
-                            st.info("🔴 Mars photo loading...")
-                    except:
-                        st.info("🔴 Mars photo loading...")
-        
-        # Mars Mission Timeline
-        st.markdown("---")
-        st.markdown("### 🚀 Mars Exploration Timeline")
-        
-        timeline_fig = create_mission_timeline()
-        st.plotly_chart(timeline_fig, use_container_width=True)
-        
-        # Mars Facts
-        st.markdown("---")
-        st.markdown("### 🌟 Mars Facts of the Day")
-        
-        for fact in mars_facts:
-            st.markdown(f"""
-            <div class="mars-fact">
-                {fact}
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # Future Missions
-        st.markdown("---")
-        st.markdown("### 🚀 Upcoming Mars Missions")
-        
-        col_future1, col_future2 = st.columns(2)
-        
-        with col_future1:
-            st.markdown(f"""
-            <div class="mission-timeline">
-                <h4>🚀 Mars Sample Return (2030s)</h4>
-                <p><strong>Agency:</strong> NASA & ESA</p>
-                <p><strong>Goal:</strong> Return Perseverance samples to Earth</p>
-                <p><strong>Status:</strong> In Development</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col_future2:
-            st.markdown(f"""
-            <div class="mission-timeline">
-                <h4>🚀 Human Mars Mission (2030s)</h4>
-                <p><strong>Agency:</strong> NASA Artemis</p>
-                <p><strong>Goal:</strong> First humans on Mars</p>
-                <p><strong>Status:</strong> Planning Phase</p>
-            </div>
-            """, unsafe_allow_html=True)
+    with col3:
+        st.markdown(f"""
+        <div class="metric-card">
+            <h3>🚗 Distance</h3>
+            <h2>{rover_status['perseverance']['distance_driven']} km</h2>
+            <p>Driven</p>
+        </div>
+        """, unsafe_allow_html=True)
     
-    # Footer
+    with col4:
+        st.markdown(f"""
+        <div class="metric-card">
+            <h3>🔋 Power</h3>
+            <h2>{rover_status['perseverance']['power_level']}%</h2>
+            <p>Battery Level</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Mars Weather Station
     st.markdown("---")
-    st.markdown("""
-    <div style='text-align: center; color: #7f8c8d; padding: 2rem 0;'>
-        🔴 <strong>Mars Exploration Hub</strong> 🔴<br>
-        📡 Real-time data from NASA Mars rovers and missions<br>
-        🚀 Following humanity's journey to the Red Planet
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("## 🌡️ Mars Weather Station")
+    
+    col_weather1, col_weather2 = st.columns(2)
+    
+    with col_weather1:
+        st.markdown(f"""
+        <div class="weather-card">
+            <h3>🌡️ Sol {mars_weather['sol']} Weather</h3>
+            <p><strong>🌡️ Temperature:</strong></p>
+            <p>High: {mars_weather['temperature']['high']}°C</p>
+            <p>Low: {mars_weather['temperature']['low']}°C</p>
+            <p><strong>🌪️ Wind:</strong> {mars_weather['wind_speed']} m/s {mars_weather['wind_direction']}</p>
+            <p><strong>📊 Pressure:</strong> {mars_weather['pressure']} Pa</p>
+            <p><strong>🌤️ Conditions:</strong> {mars_weather['weather_conditions']}</p>
+            <p><strong>📅 Season:</strong> {mars_weather['season']}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col_weather2:
+        temp_chart = create_temperature_chart(mars_weather)
+        st.plotly_chart(temp_chart, use_container_width=True)
+    
+    # Mars Rover Photos
+    st.markdown("---")
+    st.markdown("### 📷 Latest Mars Rover Photos")
+    
+    if mars_photos:
+        # Display photos in 3x2 grid
+        for row in [mars_photos[:3], mars_photos[3:6]]:
+            cols = st.columns(3)
+            for col, photo in zip(cols, row):
+                if photo:
+                    with col:
+                        try:
+                            # Versuche Bild zu laden
+                            st.image(
+                                photo['img_src'], 
+                                caption=f"📅 Sol {photo.get('sol', 'Unknown')} | 📷 {photo.get('camera', {}).get('full_name', 'Mars Camera')}",
+                                use_container_width=True
+                            )
+                        except:
+                            # Fallback wenn Bild nicht lädt
+                            st.markdown(f"""
+                            <div class="photo-placeholder">
+                                <h4>📷 Mars Photo</h4>
+                                <p>Sol {photo.get('sol', 'Unknown')}</p>
+                                <p>{photo.get('camera', {}).get('full_name', 'Camera')}</p>
+                                <p>Rover: {photo.get('rover', {}).get('name', 'Unknown')}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+    
+    # Rover Comparison
+    st.markdown("---")
+    st.markdown("### 🤖 Active Mars Rovers")
+    
+    col_rover1, col_rover2 = st.columns(2)
+    
+    with col_rover1:
+        pers = rover_status['perseverance']
+        st.markdown(f"""
+        <div class="rover-card">
+            <h3>🤖 Perseverance</h3>
+            <p><strong>🗓️ Sol:</strong> {pers['sol']}</p>
+            <p><strong>📷 Photos:</strong> {pers['total_photos']:,}</p>
+            <p><strong>🚗 Distance:</strong> {pers['distance_driven']} km</p>
+            <p><strong>🔬 Samples:</strong> {pers['samples_collected']}</p>
+            <p><strong>🔋 Power:</strong> {pers['power_level']}%</p>
+            <p><strong>📍 Status:</strong> {pers['status']}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col_rover2:
+        cur = rover_status['curiosity']
+        st.markdown(f"""
+        <div class="rover-card">
+            <h3>🔬 Curiosity</h3>
+            <p><strong>🗓️ Sol:</strong> {cur['sol']}</p>
+            <p><strong>📷 Photos:</strong> {cur['total_photos']:,}</p>
+            <p><strong>🚗 Distance:</strong> {cur['distance_driven']} km</p>
+            <p><strong>🔬 Samples:</strong> {cur['samples_collected']}</p>
+            <p><strong>🔋 Power:</strong> {cur['power_level']}%</p>
+            <p><strong>📍 Status:</strong> {cur['status']}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Mission Timeline
+    st.markdown("---")
+    st.markdown("### 🚀 Mars Exploration Timeline")
+    
+    timeline_chart = create_mission_timeline_chart(timeline_data)
+    st.plotly_chart(timeline_chart, use_container_width=True)
+    
+    # Future Mars Missions
+    st.markdown("---")
+    st.markdown("### 🚀 Future Mars Missions")
+    
+    col_future1, col_future2 = st.columns(2)
+    
+    with col_future1:
+        st.markdown("""
+        <div class="mission-card">
+            <h4>🛰️ Mars Sample Return (2028)</h4>
+            <p>Bring Perseverance samples back to Earth</p>
+            <ul>
+                <li>Sample Retrieval Lander</li>
+                <li>Mars Ascent Vehicle</li>
+                <li>Earth Return Orbiter</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col_future2:
+        st.markdown("""
+        <div class="mission-card">
+            <h4>👨‍🚀 Human Mars Mission (2030s)</h4>
+            <p>First crewed mission to Mars</p>
+            <ul>
+                <li>SpaceX Starship</li>
+                <li>NASA Artemis Gateway</li>
+                <li>Surface Habitat</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Mars Facts
+    st.markdown("---")
+    st.markdown("### 🔴 Mars Facts")
+    
+    mars_facts = [
+        "🔴 Ein Mars-Tag (Sol) dauert 24 Stunden und 37 Minuten",
+        "🌡️ Die Durchschnittstemperatur auf Mars beträgt -80°C",
+        "🏔️ Olympus Mons ist der größte Vulkan im Sonnensystem (21 km hoch)",
+        "💨 Mars-Atmosphäre besteht zu 95% aus Kohlendioxid",
+        "🌙 Mars hat zwei kleine Monde: Phobos und Deimos",
+        "🚀 Eine Reise zum Mars dauert etwa 7-9 Monate"
+    ]
+    
+    # Zeige 3 zufällige Fakten
+    selected_facts = random.sample(mars_facts, 3)
+    for fact in selected_facts:
+        st.info(fact)
+    
+    # Sidebar Information
+    with st.sidebar:
+        st.markdown("### 🔴 Mars Mission Info")
+        st.markdown(f"""
+        **Current Sol:** {mars_weather['sol']}
+        **Earth Date:** {datetime.now().strftime('%Y-%m-%d')}
+        **Season:** {mars_weather['season']}
+        
+        **Active Rovers:**
+        - 🤖 Perseverance (2021-)
+        - 🔬 Curiosity (2012-)
+        
+        **Mars Facts:**
+        - Distance from Sun: 227M km
+        - Day Length: 24h 37m
+        - Year Length: 687 Earth days
+        - Gravity: 38% of Earth
+        """)
+        
+        st.markdown("---")
+        st.markdown("### 📡 Communication")
+        st.markdown("""
+        **Signal Delay:**
+        - Mars ↔ Earth: 4-24 minutes
+        - Current: ~14 minutes
+        
+        **Data Transmission:**
+        - Via Mars orbiters
+        - Deep Space Network
+        - Limited daily windows
+        """)
+        
+        st.markdown("---")
+        st.markdown(f"*🔄 Last updated: Sol {mars_weather['sol']}*")
+    
+    # Auto-refresh
+    time.sleep(1)
 
 if __name__ == "__main__":
     main()

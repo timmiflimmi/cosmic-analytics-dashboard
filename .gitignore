@@ -1,3 +1,7 @@
+# ===========================================
+# COSMIC ANALYTICS DASHBOARD - .GITIGNORE
+# ===========================================
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -49,11 +53,36 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 
-# Virtual environments
+# ===========================================
+# ENVIRONMENT VARIABLES & SECRETS (CRITICAL!)
+# ===========================================
+
+# Environment files (NEVER commit API keys!)
 .env
 .env.local
 .env.development
 .env.production
+.env.test
+
+# Streamlit secrets (NEVER commit!)
+.streamlit/secrets.toml
+.streamlit/config.toml
+
+# API Keys and secrets (CRITICAL SECURITY!)
+secrets.toml
+api_keys.py
+config.py
+credentials.json
+*.key
+*.pem
+*.cert
+nasa_api_key.txt
+spacex_key.txt
+
+# ===========================================
+# VIRTUAL ENVIRONMENTS
+# ===========================================
+
 .venv
 env/
 venv/
@@ -61,74 +90,137 @@ ENV/
 env.bak/
 venv.bak/
 cosmic_env/
+space_env/
+media_env/
 
-# Streamlit specific
+# Conda environments
+.conda/
+
+# ===========================================
+# STREAMLIT SPECIFIC
+# ===========================================
+
+# Streamlit cache
 .streamlit/
-.streamlit/secrets.toml
-.streamlit/config.toml
 
-# API Keys and secrets (WICHTIG!)
-secrets.toml
-api_keys.py
-config.py
-*.key
-*.pem
-*.cert
+# Keep example files but ignore actual secrets
+!.streamlit/secrets.toml.example
+!.streamlit/config.toml.example
+!.streamlit/.gitkeep
 
-# IDEs and Editors
+# ===========================================
+# IDEs AND EDITORS
+# ===========================================
+
+# VSCode
 .vscode/
+*.code-workspace
+
+# PyCharm
 .idea/
+*.iml
+*.ipr
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
 *.swp
 *.swo
 *~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+
+# Spyder
 .spyderproject
 .spyproject
+
+# Rope
 .ropeproject
 
-# OS generated files
+# ===========================================
+# OPERATING SYSTEM FILES
+# ===========================================
+
+# macOS
 .DS_Store
 .DS_Store?
 ._*
 .Spotlight-V100
 .Trashes
+Icon?
+
+# Windows
 ehthumbs.db
 Thumbs.db
 desktop.ini
+$RECYCLE.BIN/
 
-# Project-specific directories
-# Logs directory (keep structure, ignore content)
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+# ===========================================
+# PROJECT SPECIFIC DIRECTORIES
+# ===========================================
+
+# Logs (ignore contents but keep structure)
 logs/*.log
 logs/*.out
 logs/*.txt
+logs/*.json
 !logs/.gitkeep
+!logs/README.md
 
-# Data directory (optional - große Dateien ignorieren)
+# Data cache and temporary files
 data/cache/
 data/temp/
+data/downloads/
 data/*.csv
 data/*.json
 data/*.xlsx
 data/*.sqlite
 data/*.db
+data/*.parquet
 !data/.gitkeep
+!data/README.md
 
-# Test files (keep test_map.py but ignore test outputs)
-test_output/
-test_results/
-*_test_output.*
-
-# Old/backup files
-*_old.py
-*_backup.py
-streamlit_app_old.py
-
-# Screenshots (optional - falls große Dateien)
+# Screenshots (ignore large files)
 screenshots/*.png
 screenshots/*.jpg
 screenshots/*.jpeg
 screenshots/*.gif
+screenshots/*.bmp
+screenshots/*.tiff
 !screenshots/README_*.png
 !screenshots/.gitkeep
+
+# Backup and old files
+*_old.py
+*_backup.py
+*_test.py
+streamlit_app_old.py
+*.bak
+*.backup
+*~
+
+# Test outputs
+test_output/
+test_results/
+*_test_output.*
+
+# ===========================================
+# PYTHON CACHES
+# ===========================================
 
 # Utils cache
 utils/__pycache__/
@@ -138,28 +230,179 @@ utils/*.pyc
 src/__pycache__/
 src/*.pyc
 
-# Logs
-*.log
-*.out
+# Pages cache
+pages/__pycache__/
+pages/*.pyc
 
-# Temporary files
-*.tmp
-*.temp
-temp/
-tmp/
+# ===========================================
+# JUPYTER NOTEBOOK
+# ===========================================
 
-# Jupyter Notebook
 .ipynb_checkpoints
+*/.ipynb_checkpoints/*
 
-# Cache directories
-.cache/
-cache/
+# Jupyter Notebook cache
+.jupyter/
+jupyter_notebook_config.py
+
+# ===========================================
+# DATA SCIENCE & ML
+# ===========================================
+
+# Model files
+*.pkl
+*.joblib
+*.h5
+*.hdf5
+*.pt
+*.pth
+models/
+checkpoints/
+
+# Large datasets
+*.csv.gz
+*.parquet
+*.feather
+
+# ===========================================
+# DOCUMENTATION & BUILDS
+# ===========================================
 
 # Documentation builds
 docs/_build/
 site/
+_site/
 
-# Backup files
-*.bak
-*.backup
-*~
+# Sphinx documentation
+docs/build/
+
+# MkDocs documentation
+site/
+
+# ===========================================
+# TEMPORARY FILES
+# ===========================================
+
+# General temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+.tmp/
+
+# Cache directories
+.cache/
+cache/
+__cache__/
+
+# ===========================================
+# DEPLOYMENT & CLOUD
+# ===========================================
+
+# Docker
+.dockerignore
+Dockerfile.dev
+
+# Heroku
+.env.example
+Procfile.dev
+
+# AWS
+.aws/
+.boto
+
+# Google Cloud
+.gcloud/
+service-account-key.json
+
+# ===========================================
+# PACKAGE MANAGERS
+# ===========================================
+
+# npm (if using any Node.js tools)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Pipenv
+Pipfile.lock
+
+# Poetry
+poetry.lock
+
+# ===========================================
+# DATABASE FILES
+# ===========================================
+
+# SQLite
+*.sqlite3
+*.db
+*.sqlite
+
+# PostgreSQL
+*.sql
+
+# ===========================================
+# API TESTING & DEVELOPMENT
+# ===========================================
+
+# Postman
+*.postman_collection.json
+*.postman_environment.json
+
+# HTTP test files
+*.http
+*.rest
+
+# ===========================================
+# SECURITY & CERTIFICATES
+# ===========================================
+
+# SSL certificates
+*.crt
+*.ca-bundle
+*.p7b
+*.p7s
+*.pfx
+
+# SSH keys
+id_rsa
+id_rsa.pub
+*.ssh
+
+# GPG keys
+*.gpg
+*.asc
+
+# ===========================================
+# MONITORING & ANALYTICS
+# ===========================================
+
+# Application logs
+error.log
+access.log
+debug.log
+
+# Performance monitoring
+*.prof
+*.trace
+
+# ===========================================
+# KEEP THESE FILES (EXPLICIT INCLUSION)
+# ===========================================
+
+# Keep important template and example files
+!.env.example
+!.streamlit/secrets.toml.example
+!requirements.txt
+!README.md
+!LICENSE
+!.gitkeep
+!docker-compose.yml.example
+
+# Keep important empty directories
+!data/.gitkeep
+!logs/.gitkeep  
+!screenshots/.gitkeep
+!.streamlit/.gitkeep

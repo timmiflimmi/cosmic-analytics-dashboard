@@ -5,6 +5,11 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import random
 import time
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Page Config
 st.set_page_config(
@@ -63,16 +68,17 @@ st.markdown("""
 
 class DeepSpaceAPI:
     def __init__(self):
-        self.nasa_apod_url = "https://api.nasa.gov/planetary/apod"
-        self.nasa_api_key = "DEMO_KEY"  # Für Produktion: echten API-Key verwenden
+        # NASA API Key aus Environment Variable laden
+        self.nasa_api_key = os.getenv("NASA_API_KEY", "DEMO_KEY")
+        
+        # NASA APIs
+        self.nasa_apod_url = f"https://api.nasa.gov/planetary/apod?api_key={self.nasa_api_key}"
+        self.nasa_neo_url = f"https://api.nasa.gov/neo/rest/v1/feed?api_key={self.nasa_api_key}"
         
     def get_nasa_picture_of_day(self):
         """Holt NASA Picture of the Day"""
         try:
-            response = requests.get(
-                f"{self.nasa_apod_url}?api_key={self.nasa_api_key}",
-                timeout=10
-            )
+            response = requests.get(self.nasa_apod_url, timeout=10)
             response.raise_for_status()
             return response.json()
         except:
@@ -182,6 +188,35 @@ class DeepSpaceAPI:
     
     def get_asteroid_data(self):
         """Asteroid und Komet Tracking"""
+        try:
+            today = datetime.now().strftime('%Y-%m-%d')
+            url = f"{self.nasa_neo_url}&start_date={today}&end_date={today}"
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            asteroids = []
+            for date, objects in data['near_earth_objects'].items():
+                for obj in objects[:3]:  # Top 3
+                    asteroids.append({
+                        'name': obj['name'],
+                        'type': 'Near-Earth Asteroid',
+                        'distance': f"{float(obj['close_approach_data'][0]['miss_distance']['kilometers']):.0f} km",
+                        'diameter': f"~{obj['estimated_diameter']['meters']['estimated_diameter_max']:.0f} meter",
+                        'closest_approach': obj['close_approach_data'][0]['close_approach_date'],
+                        'hazardous': obj['is_potentially_hazardous_asteroid']
+                    })
+            
+            if asteroids:
+                return asteroids
+            else:
+                return self._get_fallback_asteroids()
+                
+        except:
+            return self._get_fallback_asteroids()
+    
+    def _get_fallback_asteroids(self):
+        """Fallback Asteroid Daten"""
         return [
             {
                 'name': 'Asteroid 2025 KB1',
